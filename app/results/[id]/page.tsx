@@ -16,6 +16,8 @@ interface ResultImages {
   prompt: string;
   error?: boolean;
   errorMessage?: string;
+  originalImage?: string;
+  generatedImage?: string;
 }
 
 export default function Results({ params }: ResultsProps) {
@@ -33,7 +35,18 @@ export default function Results({ params }: ResultsProps) {
         }
         
         const data = await response.json();
-        setImages(data);
+        
+        if (data.originalImage && data.generatedImage) {
+          setImages({
+            original: data.originalImage,
+            generated: data.generatedImage,
+            prompt: data.prompt,
+            error: data.error,
+            errorMessage: data.errorMessage
+          });
+        } else {
+          setImages(data);
+        }
       } catch (error) {
         console.error('Error fetching results:', error);
         setError('Oops! We couldn\'t find your creation. Please try again!');

@@ -5,12 +5,27 @@ import path from 'path';
 import { writeFile, mkdir } from 'fs/promises';
 import { generateEnhancedImage } from '@/lib/stableDiffusion';
 
-// Ensure uploads directory exists
-const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+// Utiliser /tmp pour l'environnement Vercel au lieu de public/uploads
+const isVercel = process.env.VERCEL === '1';
+const uploadDir = isVercel 
+  ? path.join('/tmp', 'uploads')
+  : path.join(process.cwd(), 'public', 'uploads');
+
+// Créer un mapper pour les URLs publiques
+const getPublicUrl = (id: string, filename: string) => {
+  // En environnement Vercel, nous allons retourner les images en base64
+  if (isVercel) {
+    return `/api/images/${id}/${filename}`; // Cette API route sera créée pour servir les images
+  } else {
+    return `/uploads/${id}/${filename}`;
+  }
+};
 
 export async function POST(request: NextRequest) {
   try {
     console.log('Starting image generation process...');
+    console.log('Environment:', isVercel ? 'Vercel' : 'Local');
+    console.log('Upload directory:', uploadDir);
     
     // Create uploads directory if it doesn't exist
     if (!fs.existsSync(uploadDir)) {
@@ -56,20 +71,24 @@ export async function POST(request: NextRequest) {
     
     try {
       // Call Stable Diffusion API to generate the enhanced image
-      const generatedImageUrl = await generateEnhancedImage(
+      const generatedImagePath = await generateEnhancedImage(
         originalImagePath,
         enhancedPrompt,
         negativePrompt
       );
       
-      console.log(`Generated image saved at: ${generatedImageUrl}`);
+      console.log(`Generated image saved at: ${generatedImagePath}`);
+      
+      // Prepare the URLs for response
+      const originalUrl = getPublicUrl(id, 'original.png');
+      const generatedUrl = getPublicUrl(id, 'generated.png');
       
       // Save the results metadata
       const metadataPath = path.join(outputDir, 'metadata.json');
       const metadata = {
         id,
-        original: `/uploads/${id}/original.png`,
-        generated: `/uploads/${id}/generated.png`,
+        original: originalUrl,
+        generated: generatedUrl,
         prompt: enhancedPrompt,
         createdAt: new Date().toISOString(),
       };
@@ -77,7 +96,22 @@ export async function POST(request: NextRequest) {
       await writeFile(metadataPath, JSON.stringify(metadata, null, 2));
       console.log('Saved metadata');
       
-      return NextResponse.json({ id });
+      // Si nous sommes sur Vercel, lire les images et les renvoyer en base64
+      if (isVercel) {
+        const originalImageBuffer = await fs.promises.readFile(originalImagePath);
+        const generatedImageBuffer = await fs.promises.readFile(generatedImagePath);
+        
+        return NextResponse.json({
+          id,
+          // Inclure les images en base64 directement dans la réponse
+          originalImage: `data:image/png;base64,${originalImageBuffer.toString('base64')}`,
+          generatedImage: `data:image/png;base64,${generatedImageBuffer.toString('base64')}`,
+          prompt: enhancedPrompt
+        });
+      } else {
+        // En environnement local, retourner simplement l'ID
+        return NextResponse.json({ id });
+      }
     } catch (error) {
       console.error('Error in Stable Diffusion processing:', error);
       
@@ -91,12 +125,16 @@ export async function POST(request: NextRequest) {
       await fs.promises.copyFile(originalImagePath, fallbackPath);
       console.log('Created fallback image for testing');
       
+      // Prepare the URLs for response
+      const originalUrl = getPublicUrl(id, 'original.png');
+      const generatedUrl = getPublicUrl(id, 'generated.png');
+      
       // Save metadata with error flag
       const metadataPath = path.join(outputDir, 'metadata.json');
       const metadata = {
         id,
-        original: `/uploads/${id}/original.png`,
-        generated: `/uploads/${id}/generated.png`,
+        original: originalUrl,
+        generated: generatedUrl,
         prompt: enhancedPrompt,
         createdAt: new Date().toISOString(),
         error: true,
@@ -107,12 +145,27 @@ export async function POST(request: NextRequest) {
       
       await writeFile(metadataPath, JSON.stringify(metadata, null, 2));
       
-      // Return success with the ID but include error flag
-      return NextResponse.json({ 
-        id,
-        error: true,
-        message: 'Utilisation de l\'image de secours en raison d\'une erreur API'
-      });
+      // Si nous sommes sur Vercel, lire les images et les renvoyer en base64
+      if (isVercel) {
+        const originalImageBuffer = await fs.promises.readFile(originalImagePath);
+        const fallbackImageBuffer = await fs.promises.readFile(fallbackPath);
+        
+        return NextResponse.json({
+          id,
+          originalImage: `data:image/png;base64,${originalImageBuffer.toString('base64')}`,
+          generatedImage: `data:image/png;base64,${fallbackImageBuffer.toString('base64')}`,
+          prompt: enhancedPrompt,
+          error: true,
+          message: 'Utilisation de l\'image de secours en raison d\'une erreur API'
+        });
+      } else {
+        // En environnement local, retourner simplement l'ID avec un flag d'erreur
+        return NextResponse.json({ 
+          id,
+          error: true,
+          message: 'Utilisation de l\'image de secours en raison d\'une erreur API'
+        });
+      }
     }
   } catch (error) {
     console.error('Error generating image:', error);
@@ -121,4 +174,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}
