@@ -5,15 +5,10 @@ import path from 'path';
 import { writeFile, mkdir } from 'fs/promises';
 import { generateEnhancedImage } from '@/lib/stableDiffusion';
 
-// Permettre des requêtes jusqu'à 10 Mo
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '10mb',
-    },
-    responseLimit: false,
-  },
-};
+// Nouvelle syntaxe pour App Router
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // 60 secondes
+// On ne peut pas configurer directement la taille, mais on peut augmenter la durée
 
 // Utiliser /tmp pour l'environnement Vercel au lieu de public/uploads
 const isVercel = process.env.VERCEL === '1';
