@@ -12,11 +12,9 @@ const nextConfig = {
     // Allow larger images and disable optimization for AI-generated content
     unoptimized: true,
   },
-  // Important: Allow images of any size to be processed by the API
-  api: {
-    bodyParser: {
-      sizeLimit: '10mb',
-    },
+  experimental: {
+    // Ajout de la limite de taille du corps de la requête ici
+    serverComponentsExternalPackages: ['sharp'],
   },
 }
 

@@ -3,6 +3,16 @@ import fs from 'fs';
 import path from 'path';
 import { readFile } from 'fs/promises';
 
+// Déterminer si nous sommes sur Vercel
+const isVercel = process.env.VERCEL === '1';
+
+// Déterminer le chemin de base
+const getBaseDir = () => {
+  return isVercel 
+    ? path.join('/tmp', 'uploads')
+    : path.join(process.cwd(), 'public', 'uploads');
+};
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -17,14 +27,7 @@ export async function GET(
       );
     }
     
-    // Déterminer si nous sommes sur Vercel
-    const isVercel = process.env.VERCEL === '1';
-    
-    // Déterminer le chemin de base
-    const baseDir = isVercel 
-      ? path.join('/tmp', 'uploads')
-      : path.join(process.cwd(), 'public', 'uploads');
-    
+    const baseDir = getBaseDir();
     const metadataPath = path.join(baseDir, id, 'metadata.json');
     
     // Check if metadata file exists

@@ -38,11 +38,9 @@ export default function Results({ params }: ResultsProps) {
         
         if (data.originalImage && data.generatedImage) {
           setImages({
+            ...data,
             original: data.originalImage,
-            generated: data.generatedImage,
-            prompt: data.prompt,
-            error: data.error,
-            errorMessage: data.errorMessage
+            generated: data.generatedImage
           });
         } else {
           setImages(data);
@@ -112,12 +110,20 @@ export default function Results({ params }: ResultsProps) {
         <div className="card flex flex-col items-center">
           <h2 className="text-xl font-bold text-accent-600 mb-4">Your Original Drawing</h2>
           <div className="relative w-full aspect-square">
-            <Image 
-              src={images.original} 
-              alt="Original drawing"
-              fill
-              className="object-contain"
-            />
+            {images.original.startsWith('data:image') ? (
+              <img 
+                src={images.original} 
+                alt="Original drawing"
+                className="object-contain w-full h-full"
+              />
+            ) : (
+              <Image 
+                src={images.original} 
+                alt="Original drawing"
+                fill
+                className="object-contain"
+              />
+            )}
           </div>
           <button 
             className="btn btn-secondary mt-4"
@@ -130,12 +136,20 @@ export default function Results({ params }: ResultsProps) {
         <div className="card flex flex-col items-center">
           <h2 className="text-xl font-bold text-primary-600 mb-4">The Magic Version</h2>
           <div className="relative w-full aspect-square">
-            <Image 
-              src={images.generated} 
-              alt="AI generated image"
-              fill
-              className="object-contain"
-            />
+            {images.generated.startsWith('data:image') ? (
+              <img 
+                src={images.generated} 
+                alt="AI generated image"
+                className="object-contain w-full h-full"
+              />
+            ) : (
+              <Image 
+                src={images.generated} 
+                alt="AI generated image"
+                fill
+                className="object-contain"
+              />
+            )}
           </div>
           <button 
             className="btn btn-accent mt-4"

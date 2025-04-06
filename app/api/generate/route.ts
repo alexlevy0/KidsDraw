@@ -5,6 +5,16 @@ import path from 'path';
 import { writeFile, mkdir } from 'fs/promises';
 import { generateEnhancedImage } from '@/lib/stableDiffusion';
 
+// Permettre des requêtes jusqu'à 10 Mo
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb',
+    },
+    responseLimit: false,
+  },
+};
+
 // Utiliser /tmp pour l'environnement Vercel au lieu de public/uploads
 const isVercel = process.env.VERCEL === '1';
 const uploadDir = isVercel 
@@ -13,9 +23,9 @@ const uploadDir = isVercel
 
 // Créer un mapper pour les URLs publiques
 const getPublicUrl = (id: string, filename: string) => {
-  // En environnement Vercel, nous allons retourner les images en base64
+  // En environnement Vercel, on utilisera une route API pour servir les images
   if (isVercel) {
-    return `/api/images/${id}/${filename}`; // Cette API route sera créée pour servir les images
+    return `/api/images/${id}/${filename}`;
   } else {
     return `/uploads/${id}/${filename}`;
   }
@@ -103,7 +113,8 @@ export async function POST(request: NextRequest) {
         
         return NextResponse.json({
           id,
-          // Inclure les images en base64 directement dans la réponse
+          original: originalUrl,
+          generated: generatedUrl,
           originalImage: `data:image/png;base64,${originalImageBuffer.toString('base64')}`,
           generatedImage: `data:image/png;base64,${generatedImageBuffer.toString('base64')}`,
           prompt: enhancedPrompt
@@ -152,6 +163,8 @@ export async function POST(request: NextRequest) {
         
         return NextResponse.json({
           id,
+          original: originalUrl,
+          generated: generatedUrl,
           originalImage: `data:image/png;base64,${originalImageBuffer.toString('base64')}`,
           generatedImage: `data:image/png;base64,${fallbackImageBuffer.toString('base64')}`,
           prompt: enhancedPrompt,
